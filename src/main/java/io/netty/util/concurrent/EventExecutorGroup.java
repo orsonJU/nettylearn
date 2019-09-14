@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
  * life-cycle and allows shutting them down in a global fashion.
  *
  */
+// 从这个结构上可以看到，EventExecutorGroup其实是一个定时任务的执行线程池，拥有ScheduledExecutorService的接口和方法
 public interface EventExecutorGroup extends ScheduledExecutorService, Iterable<EventExecutor> {
 
     /**

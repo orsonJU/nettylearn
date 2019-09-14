@@ -61,6 +61,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private static final AtomicReferenceFieldUpdater<DefaultChannelPipeline, MessageSizeEstimator.Handle> ESTIMATOR =
             AtomicReferenceFieldUpdater.newUpdater(
                     DefaultChannelPipeline.class, MessageSizeEstimator.Handle.class, "estimatorHandle");
+
     final AbstractChannelHandlerContext head;
     final AbstractChannelHandlerContext tail;
 
@@ -90,13 +91,20 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private boolean registered;
 
     protected DefaultChannelPipeline(Channel channel) {
+        // 持有当前的NIOServerSocketChannel对象
         this.channel = ObjectUtil.checkNotNull(channel, "channel");
+
+        // MIST
         succeededFuture = new SucceededChannelFuture(channel, null);
+        // MIST
         voidPromise =  new VoidChannelPromise(channel, true);
 
+        // 维护一个链表？代表inbound和outbound的头和尾
+        // 把pipeline放入了channel的context中，所以可以在handler中调用ch.pipeline来获取pipeline
         tail = new TailContext(this);
         head = new HeadContext(this);
 
+        // 初始化链表
         head.next = tail;
         tail.prev = head;
     }

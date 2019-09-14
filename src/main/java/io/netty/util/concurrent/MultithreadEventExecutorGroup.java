@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class MultithreadEventExecutorGroup extends AbstractEventExecutorGroup {
 
+    // 创建了多个EventExecutor
     private final EventExecutor[] children;
     private final Set<EventExecutor> readonlyChildren;
     private final AtomicInteger terminatedChildren = new AtomicInteger();
@@ -73,9 +74,11 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         }
 
         if (executor == null) {
+            // 创建一个每个任务创建一个线程处理的executor
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
 
+        // EventExecutor是带定时任务功能的线程池
         children = new EventExecutor[nThreads];
 
         for (int i = 0; i < nThreads; i ++) {
@@ -89,12 +92,17 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             } finally {
                 if (!success) {
                     for (int j = 0; j < i; j ++) {
+                        // 针对线程池的关闭，应该使用shutdown方法
+                        // shutdownGracefully底层使用的是线程池的shutdown方法
+                        // 而shutdown方法则是调用每个线程的interrupt方法
                         children[j].shutdownGracefully();
                     }
 
                     for (int j = 0; j < i; j ++) {
                         EventExecutor e = children[j];
                         try {
+                            // 等待shutdown后，所有的线程执行完毕，因为上面的worker被interrupt之后，可能会有一些释放资源的操作
+                            // MIST，对于那种run方法里面被中断后，有继续执行相同的任务的task来说，是否有问题？
                             while (!e.isTerminated()) {
                                 e.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
                             }
@@ -108,21 +116,26 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             }
         }
 
+        // chooser负责选择由那个EventExecutor来处理任务，底层是取模轮训每个executor
         chooser = chooserFactory.newChooser(children);
 
         final FutureListener<Object> terminationListener = new FutureListener<Object>() {
             @Override
             public void operationComplete(Future<Object> future) throws Exception {
                 if (terminatedChildren.incrementAndGet() == children.length) {
+                    // 当且仅当所有的线程池都被关闭后，才设置为成功
                     terminationFuture.setSuccess(null);
                 }
             }
         };
 
+        // 为所有线程池添加一个关闭时候的监听事件
         for (EventExecutor e: children) {
             e.terminationFuture().addListener(terminationListener);
         }
 
+        // 当所有孩子线程池创建完毕后，创建一个一模一样但是无法修改的集合
+        // IDEA，这样子这个集合就可以给其他人看，但是它们无法修改里面的内容
         Set<EventExecutor> childrenSet = new LinkedHashSet<EventExecutor>(children.length);
         Collections.addAll(childrenSet, children);
         readonlyChildren = Collections.unmodifiableSet(childrenSet);

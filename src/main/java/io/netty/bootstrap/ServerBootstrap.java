@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
  * {@link Bootstrap} sub-class which allows easy bootstrap of {@link ServerChannel}
  *
  */
+// Netty 服务端辅助类
 public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerChannel> {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(ServerBootstrap.class);
@@ -75,11 +76,13 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
      * {@link Channel}'s.
      */
     public ServerBootstrap group(EventLoopGroup parentGroup, EventLoopGroup childGroup) {
+        // 把接受请求的线程设置为父线程
         super.group(parentGroup);
         ObjectUtil.checkNotNull(childGroup, "childGroup");
         if (this.childGroup != null) {
             throw new IllegalStateException("childGroup set already");
         }
+        // 处理任务的线程设置为孩子线程
         this.childGroup = childGroup;
         return this;
     }
@@ -116,16 +119,21 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
     /**
      * Set the {@link ChannelHandler} which is used to serve the request for the {@link Channel}'s.
      */
+    // 添加channel handler
+    // MIST channelhandler和childHandler的区别？
     public ServerBootstrap childHandler(ChannelHandler childHandler) {
         this.childHandler = ObjectUtil.checkNotNull(childHandler, "childHandler");
         return this;
     }
 
+    // 对NioServerSocketChannel进行初始花
     @Override
     void init(Channel channel) {
+        // options0方法用来获取所有的option配置
         setChannelOptions(channel, options0().entrySet().toArray(newOptionArray(0)), logger);
         setAttributes(channel, attrs0().entrySet().toArray(newAttrArray(0)));
 
+        // 获取channel的pipeline，pipeline持有一个链表结构的channelContext
         ChannelPipeline p = channel.pipeline();
 
         final EventLoopGroup currentChildGroup = childGroup;
@@ -134,17 +142,21 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                 childOptions.entrySet().toArray(newOptionArray(0));
         final Entry<AttributeKey<?>, Object>[] currentChildAttrs = childAttrs.entrySet().toArray(newAttrArray(0));
 
+        // 添加一个Inbound handler
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
+                // config持有一个ServerBootStrap，返回bs.handler(..)方法注册的handler
                 ChannelHandler handler = config.handler();
                 if (handler != null) {
+                    // 把handler加入到pipeline中
                     pipeline.addLast(handler);
                 }
 
+                // MIST, eventLoop()返回一个EventExecutor，这里应该是那个负责accept的线程？
                 ch.eventLoop().execute(new Runnable() {
-                    @Override
+
                     public void run() {
                         pipeline.addLast(new ServerBootstrapAcceptor(
                                 ch, currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs));
@@ -167,6 +179,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         return this;
     }
 
+    // 内部类ServerBootstrapAcceptor
     private static class ServerBootstrapAcceptor extends ChannelInboundHandlerAdapter {
 
         private final EventLoopGroup childGroup;
@@ -189,7 +202,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             //
             // See https://github.com/netty/netty/issues/1328
             enableAutoReadTask = new Runnable() {
-                @Override
+
                 public void run() {
                     channel.config().setAutoRead(true);
                 }
@@ -208,7 +221,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
 
             try {
                 childGroup.register(child).addListener(new ChannelFutureListener() {
-                    @Override
+
                     public void operationComplete(ChannelFuture future) throws Exception {
                         if (!future.isSuccess()) {
                             forceClose(child, future.cause());

@@ -25,13 +25,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 @UnstableApi
 public final class DefaultEventExecutorChooserFactory implements EventExecutorChooserFactory {
 
+    // 单例模式
     public static final DefaultEventExecutorChooserFactory INSTANCE = new DefaultEventExecutorChooserFactory();
 
+    // 单例模式，构造器私有
     private DefaultEventExecutorChooserFactory() { }
 
     @SuppressWarnings("unchecked")
     @Override
     public EventExecutorChooser newChooser(EventExecutor[] executors) {
+        // MIST，听说这里做了优化，如果是2的倍数，则使用PowerOfTwoEventExecutorChooser
+        // 两者的区别是取模运算的实现不一样
         if (isPowerOfTwo(executors.length)) {
             return new PowerOfTwoEventExecutorChooser(executors);
         } else {

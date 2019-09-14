@@ -50,6 +50,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @param <C>   A sub-type of {@link Channel}
  */
+// ChannelInitializer是Netty中一个很重要的类，用来往channel的pipeline中添加handler
+// ChannelInitializer是一个inbound的channel handler
 @Sharable
 public abstract class ChannelInitializer<C extends Channel> extends ChannelInboundHandlerAdapter {
 

@@ -42,14 +42,20 @@ import java.util.Map;
  * A {@link io.netty.channel.socket.ServerSocketChannel} implementation which uses
  * NIO selector based implementation to accept new connections.
  */
+
 public class NioServerSocketChannel extends AbstractNioMessageChannel
+                             // 留意到如果是全包名引入的类，肯定是有另外一个类和它同名了，就是JDK提供的ServerSocketChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
 
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
+
+    // 调用JDK的SelectorProvider。provider创建一个selector多路复用器
+    // MIST 这个应该和底层的系统使用的模型有关，例如select/poll/epoll等
     private static final SelectorProvider DEFAULT_SELECTOR_PROVIDER = SelectorProvider.provider();
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioServerSocketChannel.class);
 
+    // 创建一个JDK的ServerSocketChannel
     private static ServerSocketChannel newSocket(SelectorProvider provider) {
         try {
             /**
@@ -70,6 +76,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     /**
      * Create a new instance
      */
+    // channelFactory会调用这个无参构造函数
     public NioServerSocketChannel() {
         this(newSocket(DEFAULT_SELECTOR_PROVIDER));
     }

@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * A {@link ThreadFactory} implementation with a simple naming rule.
  */
+// 开源的软件真是处处都使用到JDK的定义的接口哇
 public class DefaultThreadFactory implements ThreadFactory {
 
     private static final AtomicInteger poolId = new AtomicInteger();
@@ -105,6 +106,9 @@ public class DefaultThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
+        // 使用自己的ThreadFactory
+        // 第一：可以更好的管理线程的名字
+        // 第二：可以创建必须包含某些成员变量的或者实现AOP功能
         Thread t = newThread(FastThreadLocalRunnable.wrap(r), prefix + nextId.incrementAndGet());
         try {
             if (t.isDaemon() != daemon) {
